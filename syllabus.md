@@ -10,7 +10,7 @@
 |---|---|
 | **Class Time** | 12:45 PM – 2:05 PM (80 min) |
 | **Location** | Memorial Hall, Room 113 |
-| **Instructor** | Dong Dai ([dai@udel.edu](mailto:dai@udel.edu)) |
+| **Instructor** | Dong Dai |
 | **Office** | Fintech 416B |
 | **Office Hours** | TBD |
 | **TA Office Hours** | TBA |
@@ -21,7 +21,7 @@ If you want to send me an email regarding this course, please include the course
 
 ## Teaching Assistant
 
-**Minqiu Sun** ([msun@udel.edu](mailto:msun@udel.edu))
+**Minqiu Sun**
 - Ph.D. Student, DIRLab Member
 - Research: LLM Post-training and Agent System Design
 - Office Hours: TBA
