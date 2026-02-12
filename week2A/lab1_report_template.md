@@ -24,10 +24,10 @@
 
 | Dataset | Run 1 (s) | Run 2 (s) | Run 3 (s) | Mean (s) | Std Dev |
 |---------|-----------|-----------|-----------|----------|---------|
-| random_10000 | | | | | |
-| sorted_10000 | | | | | |
-| reverse_10000 | | | | | |
-| nearly_10000 | | | | | |
+| random_100000 | | | | | |
+| sorted_100000 | | | | | |
+| reverse_100000 | | | | | |
+| nearly_sorted_100000 | | | | | |
 
 | Dataset | Instructions | Cycles | IPC | Cache misses | Cache miss % | Branch misses | Branch miss % |
 |---------|--------------|--------|-----|--------------|--------------|---------------|---------------|
