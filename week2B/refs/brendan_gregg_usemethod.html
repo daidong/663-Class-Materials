@@ -1,0 +1,418 @@
+<html>
+<head>
+<title>The USE Method</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta name="Author" content="Brendan Gregg">
+<meta name="GENERATOR" content="Vim">
+<meta name="KeyWords" content="USE Method performance methodology strategy checklist">
+<link rel="stylesheet" href="page.css">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-SYD11KXST1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-SYD11KXST1');
+</script>
+
+</head>
+<body>
+
+<div class="page">
+<div class="nav">
+<p class="navhdr">Brendan's site:</p>
+<a href="/overview.html">Start Here</a><br>
+<a href="/index.html">Homepage</a><br>
+<a href="/blog/index.html">Blog</a><br>
+<!-- <a href="/sitemap.html">Full Site Map</a><br> -->
+<a href="/systems-performance-2nd-edition-book.html">Sys Perf book</a><br>
+<a href="/bpf-performance-tools-book.html">BPF Perf book</a><br>
+<a href="/linuxperf.html">Linux Perf</a><br>
+<a href="/ebpf.html">eBPF Tools</a><br>
+<a href="/perf.html">perf Examples</a><br>
+<a href="/methodology.html">Perf Methods</a><br>
+<a href="/usemethod.html">USE Method</a><br>
+<a href="/tsamethod.html">TSA Method</a><br>
+<a href="/offcpuanalysis.html">Off-CPU Analysis</a><br>
+<a href="/activebenchmarking.html">Active Bench.</a><br>
+<a href="/wss.html">WSS Estimation</a><br>
+<a href="/flamegraphs.html">Flame Graphs</a><br>
+<a href="/flamescope.html">Flame Scope</a><br>
+<a href="/heatmaps.html">Heat Maps</a><br>
+<a href="/frequencytrails.html">Frequency Trails</a><br>
+<a href="/colonygraphs.html">Colony Graphs</a><br>
+<a href="/dtrace.html">DTrace Tools</a><br>
+<a href="/dtracetoolkit.html">DTraceToolkit</a><br>
+<a href="/dtkshdemos.html">DtkshDemos</a><br>
+<a href="/guessinggame.html">Guessing Game</a><br>
+<a href="/specials.html">Specials</a><br>
+<a href="/books.html">Books</a><br>
+<a href="/sites.html">Other Sites</a><br>
+
+</div>
+<!--
+<br>
+<p class="navhdr">This Page:</p>
+<a href="usemethod.html">USE Method</a><br>
+&nbsp; <a href="#Intro">Intro</a><br>
+&nbsp; <a href="#Summary">Summary</a><br>
+&nbsp; <a href="#HardwareResources">Hardware</a><br>
+&nbsp; <a href="#Metrics">Metrics</a><br>
+&nbsp; <a href="#SoftwareResources">Software</a><br>
+&nbsp; <a href="#SuggestedInterpretations">Interpretations</a><br>
+&nbsp; <a href="#Strategy">Strategy</a><br>
+&nbsp; <a href="#Apollo">Apollo</a><br>
+&nbsp; <a href="#OtherMethodologies">Others</a><br>
+&nbsp; <a href="#Conclusion">Conclusion</a><br>
+&nbsp; <a href="#Acknowledgements">Acks</a><br>
+&nbsp; <a href="#Updates">Updates</a><br>
+<p class="navhdr2">USE Checklists:</p>
+<a href="USEmethod/use-rosetta.html">Rosetta</a><br> 
+<a href="USEmethod/use-linux.html">Linux</a><br>
+<a href="USEmethod/use-solaris.html">Solaris</a><br>
+<a href="USEmethod/use-macosx.html">Mac OS X</a><br>
+<a href="USEmethod/use-freebsd.html">FreeBSD</a><br>
+<a href="USEmethod/use-unix7th.html">Unix 7th</a><br>
+<a href="USEmethod/use-smartos.html">SmartOS</a><br>
+</div>
+-->
+
+<div class="content">
+<h1>The USE Method</h1>
+<div style="float:right;padding-left:20px;padding-right:10px;padding-bottom:5px"><a href="USEmethod/B707_emergency01.jpg"><img width=242 height=288 border=0 src="USEmethod/B707_emergency01_crop0.jpg" style="padding-bottom:3px"></a><br><center><font size=-1><i>Boeing 707 Emergency Checklist<br>(1969)</i></font></center></div>
+<p>The Utilization Saturation and Errors (USE) Method is a methodology for analyzing the performance of any system. It directs the construction of a checklist, which for server analysis can be used for quickly identifying resource bottlenecks or errors. It begins by posing questions, and then seeks answers, instead of beginning with given metrics (partial answers) and trying to work backwards.</p>
+
+<p>The resulting USE Method-derived checklists for different operating systems are listed on the left navigation panel (<a href="USEmethod/use-linux.html">Linux</a>, <a href="USEmethod/use-solaris.html">Solaris</a>, etc). You can customize these for your environment, adding additional tools that your site uses. There is also the <a href="USEmethod/use-rosetta.html">Rosetta Stone of Performance Checklists</a>, automatically generated from some of these. Performance monitoring products can make the USE method easier to follow by providing its metrics via an easy-to-use interface.</p>
+
+
+<ul><p>
+<table border=0><tr><td valign="top" width=30%>
+Table of contents:<br>
+&nbsp; <a href="#Intro">Intro</a><br>
+&nbsp; <a href="#Summary">Summary</a><br>
+&nbsp; <a href="#HardwareResources">Hardware</a><br>
+&nbsp; <a href="#Metrics">Metrics</a><br>
+&nbsp; <a href="#SoftwareResources">Software</a><br>
+&nbsp; <a href="#SuggestedInterpretations">Interpretations</a><br>
+&nbsp; <a href="#Strategy">Strategy</a><br>
+&nbsp; <a href="#Apollo">Apollo</a><br>
+&nbsp; <a href="#OtherMethodologies">Others</a><br>
+&nbsp; <a href="#Conclusion">Conclusion</a><br>
+&nbsp; <a href="#Acknowledgements">Acks</a><br>
+&nbsp; <a href="#Updates">Updates</a><br>
+</td><td valign="top" width=30%>
+USE Checklists:<br>
+&nbsp; <a href="USEmethod/use-rosetta.html">Rosetta</a><br> 
+&nbsp; <a href="USEmethod/use-linux.html">Linux</a><br>
+&nbsp; <a href="USEmethod/use-solaris.html">Solaris</a><br>
+&nbsp; <a href="USEmethod/use-macosx.html">Mac OS X</a><br>
+&nbsp; <a href="USEmethod/use-freebsd.html">FreeBSD</a><br>
+&nbsp; <a href="USEmethod/use-unix7th.html">Unix 7th</a><br>
+&nbsp; <a href="USEmethod/use-smartos.html">SmartOS</a><br>
+</td></tr></table>
+</p></ul>
+
+
+<a name="Intro"></a>
+<h2>Intro</h2>
+<p>A serious performance issue arises, and you suspect it's caused by the server.  What do you check first?</p>
+
+<p>Getting started can be the hardest part. I developed the USE Method to teach others how to solve common performance issues quickly, without overlooking important areas. Like an emergency checklist in a flight manual, it is intended to be simple, straightforward, complete, and fast. The USE Method has been used successfully countless times in different enterprise environments, classroom environments (as a learning tool), and more recently in cloud computing environments.</p>
+
+<p>The USE Method is based on three metric types and a strategy for approaching a complex system.  I find it solves about 80% of server issues with 5% of the effort, and, as I will demonstrate, it can be applied to systems other than servers.
+
+It should be thought of as a tool, one that is part of larger toolbox of methodologies. There are many problem types it doesn't solve, which will require other methods and longer time spans.</p>
+
+<a name="Summary"></a>
+<h2>Summary</h2>
+
+<p>The USE Method can be summarized as:</p>
+
+<blockquote><b>For every resource, check utilization, saturation, and errors.</b></blockquote>
+
+<p>It's intended to be used early in a performance investigation, to identify systemic bottlenecks.</p>
+
+<p>Terminology definitions:</p>
+
+<ul>
+<li><b>resource</b>: all physical server functional components (CPUs, disks, busses, ...) [1]</li>
+<li><b>utilization</b>: the average time that the resource was busy servicing work [2]</li>
+<li><b>saturation</b>: the degree to which the resource has extra work which it can't service, often queued</li>
+<li><b>errors</b>: the count of error events</li>
+</ul>
+
+<p>[1] It can be useful to consider some software resources as well, or software imposed limits (resource controls), and see which metrics are possible.<br>
+[2] There is another definition where utilization describes the proportion of a resource that is used, and so 100% utilization means no more work can be accepted, unlike with the "busy" definition above.</p>
+
+<p>The metrics are usually expressed in the following terms:</p>
+
+<ul>
+<li>utilization: as a percent over a time interval.  eg, "one disk is running at 90% utilization".</li>
+<li>saturation: as a queue length.  eg, "the CPUs have an average run queue length of four".</li>
+<li>errors: scalar counts.  eg, "this network interface has had fifty late collisions".</li>
+</ul>
+
+<p>Errors should be investigated because they can degrade performance, and may not be immediately noticed when the failure mode is recoverable.  This includes operations that fail and are retried, and devices from a pool of redundant devices that fail.</p>
+
+<a name="LowUtilization"></a>
+<h2>Does Low Utilization Mean No Saturation?</h2>
+
+<p>A burst of high utilization can cause saturation and performance issues, even though utilization is <i>low</i> when averaged over a long interval. This may be counter-intuitive!</p>
+
+<p>I had an example where a customer had problems with CPU saturation (latency) even though their monitoring tools showed CPU utilization was never higher than 80%.  The monitoring tool was reporting five minute averages, during which CPU utilization hit 100% for seconds at a time.</p>
+
+<a name="HardwareResources"></a>
+<h2>Resource List</h2>
+
+<p>To begin with, you need a list of resources to iterate through.  Here is a generic list for servers:</p>
+
+<ul>
+<li>CPUs: sockets, cores, hardware threads (virtual CPUs)</li>
+<li>Memory: capacity</li>
+<li>Network interfaces</li>
+<li>Storage devices: I/O, capacity</li>
+<li>Controllers: storage, network cards</li>
+<li>Interconnects: CPUs, memory, I/O</li>
+</ul>
+
+<p>Some components are two types of resources: storage devices are a service request resource (I/O) and also a capacity resource (population).  Both types can become a system bottleneck.  Request resources can be defined as <i>queueing systems</i>, which can queue and then service requests.</p>
+
+<p>Some physical components have been left out, such as hardware caches (eg, MMU TLB/TSB, CPU).  The USE Method is most effective for resources that suffer performance degradation under high utilization or saturation, leading to a bottleneck.  Caches <i>improve</i> performance under high utilization.</p>
+
+<p>Cache hit rates and other performance attributes can be checked after the USE Method - after systemic bottlenecks have been ruled out.  If you are unsure whether to include a resource, include it, then see how well the metrics work.</p>
+
+<a name="FunctionalBlockDiagram"></a>
+<h2>Functional Block Diagram</h2>
+
+<p>Another way to iterate over resources is to find or draw a <a href="http://en.wikipedia.org/wiki/Function_block_diagram">Functional Block Diagram</a> for the system.  These also show relationships, which can be very useful when looking for bottlenecks in the flow of data.  Here is an example from the <a href="http://docs.oracle.com/cd/E19095-01/sfv480.srvr/816-0904-10/816-0904-10.pdf">Sun Fire V480 Guide</a> (page 82):</p>
+
+<center><a href="USEmethod/v480.png"><img src="USEmethod/v480.png" width="450" height="460" /></a></center>
+
+<p>I love these diagrams, although they can be hard to come by.  Hardware engineers can be the best resource &ndash; the people who actually build the things.  Or you can try drawing your own.</p>
+
+<p>While determining utilization for the various busses, annotate each bus on the functional diagram with its maximum bandwidth.  This results in a diagram where systemic bottlenecks may be identified before a single measurement has been taken.  (This is a useful exercise during hardware product design, when physical components can be changed.)</p>
+
+<a name="Interconnects"></a>
+<h2>Interconnects</h2>
+
+<p>CPU, memory and I/O interconnects are often overlooked.  Fortunately, they aren't commonly the system bottleneck.  Unfortunately, if they are, it can be difficult to do much about (maybe you can upgrade the main board, or reduce load: eg, "zero copy" projects lighten memory bus load).  With the USE Method, at least you become aware of what you weren't considering: interconnect performance.  See <a href="http://www.brendangregg.com/blog/2009-09-22/analyzing-the-hypertransport.html">Analyzing the HyperTransport</a> for an example of an interconnect issue which I identified with the USE Method.</p>
+
+<a name="Metrics"></a>
+<h2>Metrics</h2>
+
+<p>Given the list of resources, consider the metric types: utilization, saturation and errors.</p>
+
+<p>Here are some examples.  In the table below, think about each resource and metric type, and see if you can fill in the blanks.  Mousing over the empty cells will reveal some possible answers, described in generic Unix/Linux terms (you can be more specific):</p>
+
+<style type="text/css">
+  #div1, #div2, #div3, #div4, #div5, #div6, #div7, #div8, #div10, #div11, #div12, #div13, #div14, #div15, #div16 {  
+    visibility: hidden;  
+  }
+</style>
+<script>
+  function show(id) {
+    document.getElementById(id).style.visibility = "visible";
+  }
+  function hide(id) {
+    document.getElementById(id).style.visibility = "hidden";
+  }
+</script>
+<p><table class="p" border=1 width="100%">
+<tr><th>resource</th><th>type</th><th>metric</th></tr>
+<tr><td>CPU</td><td>utilization</td><td><div style="cursor: pointer" onMouseOver="show('div1')" onMouseOut="hide('div1')"><div id="div1">CPU utilization (either per-CPU or a system-wide average)</div></div></td></tr>
+<tr><td>CPU</td><td>saturation</td><td><div style="cursor: pointer" onMouseOver="show('div2')" onMouseOut="hide('div2')"><div id="div2">run-queue length or scheduler latency(aka </div></div></td></tr>
+<tr><td>Memory capacity</td><td>utilization</td><td><div style="cursor: pointer" onMouseOver="show('div3')" onMouseOut="hide('div3')"><div id="div3">available free memory (system-wide)</div></div></td></tr>
+<tr><td>Memory capacity</td><td>saturation</td><td><div style="cursor: pointer" onMouseOver="show('div4')" onMouseOut="hide('div4')"><div id="div4">anonymous paging or thread swapping (maybe "page scanning" too)</div></div></td></tr>
+<tr><td>Network interface</td><td>utilization</td><td><div style="cursor: pointer" onMouseOver="show('div5')" onMouseOut="hide('div5')"><div id="div5">RX/TX throughput / max bandwidth</div></div></td></tr>
+<tr><td>Storage device I/O</td><td>utilization</td><td><div style="cursor: pointer" onMouseOver="show('div6')" onMouseOut="hide('div6')"><div id="div6">device busy percent</div></div></td></tr>
+<tr><td>Storage device I/O</td><td>saturation</td><td><div style="cursor: pointer" onMouseOver="show('div7')" onMouseOut="hide('div7')"><div id="div7">wait queue length</div></div></td></tr>
+<tr><td>Storage device I/O</td><td>errors</td><td><div style="cursor: pointer" onMouseOver="show('div8')" onMouseOut="hide('div8')"><div id="div8">device errors ("soft", "hard", ...)</div></div></td></tr>
+</table></p>
+
+<p><span style="cursor: pointer" onClick="show('div1'); show('div2'); show('div3'); show('div4'); show('div5'); show('div6'); show('div7'); show('div8');"><u>Click here</u> to reveal all.</span>  I've left off timing: these metrics are either averages per interval or counts.  I've also left off how to fetch them: for your custom checklist, include which OS tool or monitoring software to use, and which statistic to read.  For those metrics that aren't available, write "?".  You will end up with a checklist that is easy and quick to follow, and is as complete as possible for your system.</p>
+
+<a name="HarderMetrics"></a>
+<h2>Harder Metrics</h2>
+
+<p>Now for some harder combinations (again, try to think about these first!):</p>
+
+<p><table class="p" border=1 width="100%">
+<tr><th>resource</th><th>type</th><th>metric</th></tr>
+<tr><td>CPU</td><td>errors</td><td><div style="cursor: pointer" onMouseOver="show('div10')" onMouseOut="hide('div10')"><div id="div10">eg, correctable CPU cache ECC events or faulted CPUs (if the OS+HW supports that)</div></div></td></tr>
+<tr><td>Memory capacity</td><td>errors</td><td><div style="cursor: pointer" onMouseOver="show('div11')" onMouseOut="hide('div11')"><div id="div11">eg, failed malloc()s (although this is usually due to virtual memory exhaustion, not physical)</div></div></td></tr>
+<tr><td>Network</td><td>saturation</td><td><div style="cursor: pointer" onMouseOver="show('div12')" onMouseOut="hide('div12')"><div id="div12">saturation related NIC or OS events; eg "dropped", "overruns"</div></div></td></tr>
+<tr><td>Storage controller</td><td>utilization</td><td><div style="cursor: pointer" onMouseOver="show('div13')" onMouseOut="hide('div13')"><div id="div13">depends on the controller; it may have a max IOPS or throughput that can be checked vs current activity</div></div></td></tr>
+<tr><td>CPU interconnect</td><td>utilization</td><td><div style="cursor: pointer" onMouseOver="show('div14')" onMouseOut="hide('div14')"><div id="div14">per port throughput / max bandwidth (CPU performance counters)</div></div></td></tr>
+<tr><td>Memory interconnect</td><td>saturation</td><td><div style="cursor: pointer" onMouseOver="show('div15')" onMouseOut="hide('div15')"><div id="div15">memory stall cycles, high CPI (CPU performance counters)</div></div></td></tr>
+<tr><td>I/O interconnect</td><td>utilization</td><td><div style="cursor: pointer" onMouseOver="show('div16')" onMouseOut="hide('div16')"><div id="div16">bus throughput / max bandwidth (performance counters may exist on your HW; eg, Intel "uncore" events)</div></div></td></tr>
+</table></p>
+
+<p><span style="cursor: pointer" onClick="show('div10'); show('div11'); show('div12'); show('div13'); show('div14'); show('div15'); show('div16');"><u>Click here</u> to reveal all.</span>  These typically get harder to measure, depending on the OS, and I often have to write my own software to do them (eg, the "amd64htcpu" script from <a href="http://www.brendangregg.com/blog/2009-09-22/analyzing-the-hypertransport.html">Analyzing the HyperTransport</a>).</p>
+
+<p>Repeat for all combinations, and include instructions for fetching each metric.  You'll end up with a list of about thirty metrics, some of which can't be measured, and some of which are tricky to measure.  Fortunately, the most common issues are usually found with the easy ones (eg, CPU saturation, memory capacity saturation, network interface utilization, disk utilization), which can be checked first.</p>
+
+<p>See the top of this page for the example checklists for Linux, Solaris, Mac OS X, FreeBSD, etc.</p>
+
+<a name="InPractice"></a>
+<h2>In Practice</h2>
+
+<p>Reading metrics for every combination on your OS can very time consuming, especially once you start working through bus and interconnect metrics. You may only have time to check a subset: CPUs, memory capacity, storage capacity, storage device I/O, network interfaces. This is better than it sounds! The USE Method has made you aware of what you didn't check: what were once unknown-unknowns are now known-unknowns. And for that time when it's vital for your company to root cause a performance issue, you already have a to-do list of known extra work that can be performed for more thorough analysis, completing the USE Method for when it's really needed.</p>
+
+<p>It's hoped that the subset of metrics that are easy to check grows over time, as more metrics are added to OSes to make the USE Method easier. Performance monitoring software can also help, adding USE method wizards to do the work for you.</p>
+
+<a name="SoftwareResources"></a>
+<h2>Software Resources</h2>
+
+<p>Some software resources can be considered in a similar way.  This usually applies to smaller components of software, not entire applications.  For example:</p>
+
+<ul>
+<li><b>mutex locks</b>: utilization may be defined as the time the lock was held; saturation by those threads queued waiting on the lock.</li>
+<li><b>thread pools</b>: utilization may be defined as the time threads were busy processing work; saturation by the number of requests waiting to be serviced by the thread pool.</li>
+<li><b>process/thread capacity</b>: the system may have a limited number of processes or threads, the current usage of which may be defined as utilization; waiting on allocation may be saturation; and errors are when the allocation failed (eg, "cannot fork").</li>
+<li><b>file descriptor capacity</b>: similar to the above, but for file descriptors.</li>
+</ul>
+
+<p>Don't sweat this type.  If the metrics work well, use them, otherwise software can be left to other methodologies (eg, latency).</p>
+
+<a name="SuggestedInterpretations"></a>
+<h2>Suggested Interpretations</h2>
+
+<p>The USE Method helps you identify which metrics to use.  After learning how to read them from the operating system, your next task is to interpret their current values.  For some, interpretation may be obvious (and well documented).  Others, not so obvious, and may depend on workload requirements or expectations.</p>
+
+<p>The following are some general suggestions for interpreting metric types:</p>
+
+<ul>
+<li><b>Utilization</b>: 100% utilization is usually a sign of a bottleneck (check saturation and its effect to confirm).  High utilization (eg, beyond 70%) can begin to be a problem for a couple of reasons:</li>
+<ul>
+<li>When utilization is measured over a relatively long time period (multiple seconds or minutes), a total utilization of, say, 70% can hide short bursts of 100% utilization.</li>
+<li>Some system resources, such as hard disks, cannot be interrupted during an operation, even for higher-priority work.  Once their utilization is over 70%, queueing delays can become more frequent and noticeable.  Compare this to CPUs, which can be interrupted ("preempted") at almost any moment.</li>
+</ul>
+<li><b>Saturation</b>: any degree of saturation can be a problem (non-zero).  This may be measured as the length of a wait queue, or time spent waiting on the queue.</li>
+<li><b>Errors</b>: non-zero error counters are worth investigating, especially if they are still increasing while performance is poor.</li>
+</ul>
+
+<p>It's easy to interpret the negative case: low utilization, no saturation, no errors.  This is more useful than it sounds - narrowing down the scope of an investigation can quickly bring focus to the problem area.</p>
+
+<a name="CloudComputing"></a>
+<h2>Cloud Computing</h2>
+
+<p>In a cloud computing environment, software resource controls may be in place to limit or throttle tenants who are sharing one system. This can include hypervisor or container (cgroup) limits for memory, CPU, network, and storage I/O. External hardware may also impose limits, such as for network throughput. Each of these resource limits can be examined with the USE Method, similar to examining the physical resources.</p>
+
+<p>For example, in our environment "memory capacity utilization" can be the tenant's memory usage vs its memory cap.  "memory capacity saturation" can be seen by anonymous paging activity, even though the traditional Unix page scanner may be idle.</p>
+
+<a name="Strategy"></a>
+<h2>Strategy</h2>
+
+<p>The USE Method is pictured as a flowchart below.  Note that errors can be checked before utilization and saturation, as a minor optimization (they are usually quicker and easier to interpret).</p>
+
+<center><a href="USEmethod/usemethod_flow.png"><img src="USEmethod/usemethod_flow.png" width="400" height="442" /></a></center>
+
+<p>The USE Method identifies problems which are likely to be system bottlenecks.  Unfortunately, systems can be suffering more than one performance problem, and so the first one you find may be <i>a</i> problem but not <i>the</i> problem.   Each discovery can be investigated using further methodologies, before continuing the USE Method as needed to iterate over more resources.</p>
+
+<p>Strategies for further analysis include workload characterization and drill-down analysis.  After completing these (if needed), you should have evidence for whether the corrective action is to adjust the load applied or to tune the resource itself.</p>
+
+<a name="Apollo"></a>
+<h2>Apollo</h2>
+
+<p>I said earlier that the USE Method could be applied beyond servers.  Looking for a fun example, I thought of a system in which I have no expertise at all, and no idea where to start: the Apollo Lunar Module guidance system.  The USE Method provides a simple procedure to try.</p>
+
+<p>The first step is to find a list of resources, or better still, a functional block diagram.  I found the following in the "Lunar Module - LM10 Through LM14 Familiarization Manual" (1969):</p>
+
+<center><a href="USEmethod/apollo_LM_guidance.png"><img src="USEmethod/apollo_LM_guidance.png" width=679 height=528 /></a></center>
+
+<p>Some of these components may not exhibit utilization or saturation characteristics.  After iterating through them, this can be redrawn to only include relevant components.  (I'd also include more: the "erasable storage" section of memory, the "core set area" and "vac area" registers.)</p>
+
+<p>I'll start with the Apollo guidance computer (AGC) itself.  For each metric, I browsed various LM docs to see what might make sense:</p>
+
+<ul>
+<li><b>AGC utilization</b>: This could be defined as the number of CPU cycles doing jobs (not the "DUMMY JOB") divided by the clock rate (2.048 MHz).  This metric appears to have been well understood at the time.</li>
+<li><b>AGC saturation</b>: This could be defined as the number of jobs in the "core set area", which are seven sets of registers to store program state.  These allow a job to be suspended (by the "EXECUTIVE" program - what we'd call a "kernel" these days) if an interrupt for a higher priority job arrives.  Once exhausted, this moves from a saturation state to an error state, and the AGC reports a 1202 "EXECUTIVE OVERFLOW-NO CORE SETS" alarm.</i>
+<li><b>AGC errors</b>: Many alarms are defined.  Apart from 1202, there is also a 1203 alarm "WAITLIST OVERFLOW-TOO MANY TASKS", which is a performance issue of a different type: too many timed tasks are being processed before returning to normal job scheduling. As with 1202, it could be useful to define a saturation metric that was the length of the WAITLIST, so that saturation can be measured before the overflow and error occurs.</li>
+</ul>
+
+<p>Some of these details may be familiar to space ethusiasts: 1201 ("NO VAC AREAS") and 1202 alarms famously occurred during the <a href="http://en.wikipedia.org/wiki/Apollo_Guidance_Computer#PGNCS_trouble">Apollo 11 descent</a>.  ("VAC" is short for "<a href="USEmethod/AGC_core_and_vac.png">vector accumulator</a>", extra storage for jobs that process vector quantities; I think wikipedia's description as "vacant" may be incorrect). </p>
+
+<p>Given Apollo 11's 1201 alarm, analysis can continue using other methodologies, such as workload characterization.  The workload is mostly applied via interrupts, many of which can be seen in the functional diagram.  This includes the rendezvous radar, used to track the Command Module, which was interrupting the AGC with work even though the LM was performing descent.  This is an example of finding unnecessary work (or low priority work; some updates from the radar may have been desirable so that the LM AGC could immediately calculate an abort trajectory and CM rendezvous if needed).</p>
+
+<p>As a harder example, I'll examine the rendezvous radar as a resource.  Errors are the easiest to <a href="USEmethod/apollo_LM_radarsignalflow.png">identify</a>.  There are three types: "DATA NO GOOD", "NO TRACK", and "SHAFT- AND TRUNNION-AXIS ERROR" signals.  Utilization is harder: one type may be utilization of the drive motors - defined as the time they were busy responding to angle commands (seen in the functional diagram via the "COUPLING DATA UNIT").  I'll need to read the LM docs more to see if there saturation characteristics either with the drive motors or with the returned radar data.</p>
+
+<p>In a short amount of time, using this methodology, I've gone from having no idea where to start, to having specific metrics to look for and research.</p>
+
+<a name="OtherMethodologies"></a>
+<h2>Other Methodologies</h2>
+
+<p>While the USE Method may find 80% of server issues, latency-based methodologies (eg, <a href="http://carymillsap.blogspot.com/2009/11/why-we-made-method-r.html">Method R</a>) can approach finding 100% of all issues.  However, these can take much more time if you are unfamiliar with software internals.  They may be more suited for database administrators or application developers, who already have this familiarity.  The USE Method is more suited for junior or senior system administrators, whose responsibility and expertise includes the operating system (OS) and hardware.  It can also be employed by these other staff when a quick check of system health is desired.</p>
+
+<a name="ToolsMethod"></a>
+<h2>Tools Method</h2>
+
+<p>For comparison with the USE Method, I'll describe a tools-based approach (I'll call this "Tools Method"):</p>
+
+<ol>
+<li>List available performance tools (optionally install or purchase more).</li>
+<li>For each tool, list useful metrics it provides.</li>
+<li>For each metric, list possible interpretation rules.</li>
+</ol>
+
+<p>The result of this is a prescriptive checklist showing which tool to run, which metrics to read, and how to interpret them.  While this can be fairly effective, one problem is that it relies exclusively on available (or known) tools, which can provide an incomplete view of the system.  The user is also unaware that they have an incomplete view - and so the problem will remain.</p>
+
+<p>The USE Method, instead, iterates over the system resources to create a complete list of questions to ask,  then searches for tools to answer them.  A more complete view is constructed, and unknown areas are documented and their existence known ("known unknowns").  Based on USE, a similar checklist can be developed showing which tool to run (where available), which metric to read, and how to interpret it.</p>
+
+<p>Another problem can be when iterating through a large number of tools distracts from the goal - to find bottlenecks.  The USE Method provides a strategy to find bottlenecks and errors efficiently, even with an unwieldy number of available tools and metrics.</p>
+
+<a name="Conclusion"></a>
+<h2>Conclusion</h2>
+
+<p>The USE Method is a simple strategy you can use to perform a complete a check of system health, identifying common bottlenecks and errors.  It can be deployed early in the investigation and quickly identify problem areas, which then can be studied in more detail other methodologies, if need be.  The strength of USE is its speed and visibility: by considering all resources, you are unlikely to overlook any issues.  It will, however, only find certain types of issues &ndash; bottlenecks and errors &ndash; and should be considered as one tool in a larger toolbox.</p>
+
+<p>I explained the USE Method on this page and provided generic examples of metrics. See the example checklists in the left navigation pane for specific operating systems, where tools and metrics to apply the USE Method are suggested.</p>
+
+<p>Also see the complementary thread-based methodology, the <a href="tsamethod.html">TSA Method</a>.</p>
+
+<a name="Acknowledgements"></a>
+<h2>Acknowledgments</h2>
+
+<ul>
+<li>"Optimizing Oracle Performance" by Cary Millsap and Jeff Holt (2003) describes Method R (and other methodologies), which reminded me recently that I should write this methodology down.</li>
+<li>The groups at Sun Microsystems, including PAE and ISV, who helped apply the USE Method (before it was named) to the storage appliance series.  We drew ASCII functional block diagrams annotated with metric names and bus speeds &ndash; these were harder to construct than you would think (we should have asked the hardware teams for help sooner).</li>
+<li>My students from performance classes several years ago, to whom I taught this methodology and who provided feedback.</li>
+<li>The <a href="http://www.ibiblio.org/apollo/index.html">Virtual AGC</a> project, which became a fun distraction as I read through their <a href="http://www.ibiblio.org/apollo/links.html">document library</a>, hosted by ibiblio.org.  In particular was the LMA790-2 "Lunar Module LM-10 Through LM-14 Vehicle Familiarization Manual" (page 48 has the functional block diagram), and the "Apollo Guidance and Navigation Lunar Module Student Study Guide", which has a good explanation of the EXECUTIVE program including flow charts.  (These docs are 109 and 9 Mbytes in size.)</li>
+<li><a href="http://www.beginningwithi.com/comments">Deirdr&eacute; Straughan</a> for edits and feedback, improving my explanations.</li>
+<li>The image at the top of this post is from a Boeing 707 flight manual, printed in 1969. This is (of course) obsolete and shouldn't be used for reference. If you click it you get the full page.</li>
+</ul>
+
+<a name="Updates"></a>
+<h2>Updates</h2>
+
+<p>USE Method updates:</p>
+
+<ul>
+<li>It was published in ACMQ as <a href="http://queue.acm.org/detail.cfm?id=2413037">Thinking Methodically about Performance</a> (2012).</li>
+<li>It was also published in Communications of the ACM as <a href="http://cacm.acm.org/magazines/2013/2/160167-thinking-methodically-about-performance/">Thinking Methodically about Performance</a> (2013).</li>
+<li>I presented it in the FISL13 talk <a href="http://dtrace.org/blogs/brendan/2012/09/21/fisl13-the-use-method/">The USE Method</a> (2012).</li>
+<li>I spoke about it at Oaktable World 2012: <a href="http://www.youtube.com/watch?feature=player_embedded&v=W6rtXaf2gBU">video</a>, <a href="http://www.kylehailey.com/ftp/oaktable2012.pdf">PDF</a>.</li>
+<li>I included it in the USENIX LISA `12 talk <a href="http://dtrace.org/blogs/brendan/2012/12/13/usenix-lisa-2012-performance-analysis-methodology/">Performance Analysis Methodology</a>.</li>
+<li>It is covered in my book on <a href="sysperfbook.html">Systems Performance</a>, published by Prentice Hall (2013).</li>
+</ul>
+
+<p>More updates (Apr 2014):</p>
+
+<ul>
+<li><a href="https://lucerahq.com/">LuceraHQ</a> are implementing USE Method metrics on SmartOS for <a href="https://github.com/luceracloud/dtrace_monitor">performance monitoring</a> of their high performance financial cloud.</li>
+<li>I spoke about the USE Method for OS X at <a href="http://www.slideshare.net/brendangregg/analyzing-os-x-systems-performance-with-the-use-method">MacIT 2014</a> (slides).</li>
+</ul>
+
+<p>More updates (Aug 2017):</p>
+
+<ul>
+<li>Heinrich Hartmann posted <a href="https://www.circonus.com/2017/08/system-monitoring-with-the-use-dashboard/">System Monitoring with the USE Dashboard</a>, showing how a USE method dashboard has been implemented by the Circonus monitoring product.</li>
+</ul>
+
+</div>
+</div>
+<hr>
+Last updated: 24-Aug-2017<br>
+
+</body>
+</html>

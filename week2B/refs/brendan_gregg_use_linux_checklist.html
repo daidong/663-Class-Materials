@@ -1,0 +1,208 @@
+<html>
+<head>
+<title>USE Method: Linux Performance Checklist</title>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta name="Author" content="Brendan Gregg">
+<meta name="GENERATOR" content="Vim">
+<meta name="KeyWords" content="USE Method Linux performance checklist">
+<link rel="stylesheet" href="../page.css">
+<style type="text/css">
+tt { font-size:14px; }
+</style>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-SYD11KXST1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-SYD11KXST1');
+</script>
+
+</head>
+<body>
+
+<div class="nav">
+<p class="navhdr">Brendan's site:</p>
+<a href="/overview.html">Start Here</a><br>
+<a href="/index.html">Homepage</a><br>
+<a href="/blog/index.html">Blog</a><br>
+<!-- <a href="/sitemap.html">Full Site Map</a><br> -->
+<a href="/systems-performance-2nd-edition-book.html">Sys Perf book</a><br>
+<a href="/bpf-performance-tools-book.html">BPF Perf book</a><br>
+<a href="/linuxperf.html">Linux Perf</a><br>
+<a href="/ebpf.html">eBPF Tools</a><br>
+<a href="/perf.html">perf Examples</a><br>
+<a href="/methodology.html">Perf Methods</a><br>
+<a href="/usemethod.html">USE Method</a><br>
+<a href="/tsamethod.html">TSA Method</a><br>
+<a href="/offcpuanalysis.html">Off-CPU Analysis</a><br>
+<a href="/activebenchmarking.html">Active Bench.</a><br>
+<a href="/wss.html">WSS Estimation</a><br>
+<a href="/flamegraphs.html">Flame Graphs</a><br>
+<a href="/flamescope.html">Flame Scope</a><br>
+<a href="/heatmaps.html">Heat Maps</a><br>
+<a href="/frequencytrails.html">Frequency Trails</a><br>
+<a href="/colonygraphs.html">Colony Graphs</a><br>
+<a href="/dtrace.html">DTrace Tools</a><br>
+<a href="/dtracetoolkit.html">DTraceToolkit</a><br>
+<a href="/dtkshdemos.html">DtkshDemos</a><br>
+<a href="/guessinggame.html">Guessing Game</a><br>
+<a href="/specials.html">Specials</a><br>
+<a href="/books.html">Books</a><br>
+<a href="/sites.html">Other Sites</a><br>
+
+<br>
+<p class="navhdr">This Page:</p>
+<a href="use-linux.html">USE Linux</a><br>
+&nbsp; <a href="#Hardware">Hardware</a><br>
+&nbsp; <a href="#Software">Software</a><br>
+&nbsp; <a href="#Acknowledgements">Acks</a><br>
+<p class="navhdr2">USE Checklists:</p>
+<a href="use-rosetta.html">Rosetta</a><br>
+<a href="use-linux.html">Linux</a><br>
+<a href="use-solaris.html">Solaris</a><br>
+<a href="use-macosx.html">Mac OS X</a><br>
+<a href="use-freebsd.html">FreeBSD</a><br>
+<a href="use-unix7th.html">Unix 7th</a><br>
+<a href="use-smartos.html">SmartOS</a><br>
+</div>
+
+<div class="content">
+<h1>USE Method: Linux Performance Checklist</h1>
+
+<p>The <a href="../usemethod.html">USE Method</a> provides a strategy for performing a complete check of system health, identifying common bottlenecks and errors.  For each system resource, metrics for utilization, saturation and errors are identified and checked.  Any issues discovered are then investigated using further strategies.</p>
+
+<p>This is an example USE-based metric list for Linux operating systems (eg, Ubuntu, CentOS, Fedora).  This is primarily intended for system administrators of the physical systems, who are using command line tools.  Some of these metrics can be found in remote monitoring tools.</p>
+
+<a name="Hardware"></a>
+<h2>Physical Resources</h2>
+
+<table border=1 cellpadding=2 width="100%">
+<tr><th>component</th><th>type</th><th>metric</th></tr>
+
+<!HW-START>
+<tr bgcolor="#ffe8e8"><td>CPU</td><td>utilization</td><td>system-wide: <tt>vmstat 1</tt>, "us" + "sy" + "st"; <tt>sar -u</tt>, sum fields except "%idle" and "%iowait"; <tt>dstat -c</tt>, sum fields except "idl" and "wai"; per-cpu: <tt>mpstat -P ALL 1</tt>, sum fields except "%idle" and "%iowait"; <tt>sar -P ALL</tt>, same as <tt>mpstat</tt>; per-process: <tt>top</tt>, "%CPU"; <tt>htop</tt>, "CPU%"; <tt>ps -o pcpu</tt>; <tt>pidstat 1</tt>, "%CPU"; per-kernel-thread: <tt>top</tt>/<tt>htop</tt> ("K" to toggle), where VIRT == 0 (heuristic). [1]</td></tr>
+<tr bgcolor="#ffe8e8"><td>CPU</td><td>saturation</td><td>system-wide: <tt>vmstat 1</tt>, "r" &gt; CPU count [2]; <tt>sar -q</tt>, "runq-sz" &gt; CPU count; <tt>dstat -p</tt>, "run" &gt; CPU count; per-process: /proc/PID/schedstat 2nd field (sched_info.run_delay); <tt>perf sched latency</tt> (shows "Average" and "Maximum" delay per-schedule); dynamic tracing, eg, SystemTap schedtimes.stp "queued(us)" [3]</td></tr>
+<tr bgcolor="#ffe8e8"><td>CPU</td><td>errors</td><td><tt>perf</tt> (LPE) if processor specific error events (CPC) are available; eg, AMD64's "04Ah Single-bit ECC Errors Recorded by Scrubber" [4]</td></tr>
+
+<tr bgcolor="#e8ffe8"><td>Memory capacity</td><td>utilization</td><td>system-wide: <tt>free -m</tt>, "Mem:" (main memory), "Swap:" (virtual memory); <tt>vmstat 1</tt>, "free" (main memory), "swap" (virtual memory); <tt>sar -r</tt>, "%memused"; <tt>dstat -m</tt>, "free"; <tt>slabtop -s c</tt> for kmem slab usage; per-process: <tt>top</tt>/<tt>htop</tt>, "RES" (resident main memory), "VIRT" (virtual memory), "Mem" for system-wide summary</td></tr>
+<tr bgcolor="#e8ffe8"><td>Memory capacity</td><td>saturation</td><td>system-wide: <tt>vmstat 1</tt>, "si"/"so" (swapping); <tt>sar -B</tt>, "pgscank" + "pgscand" (scanning); <tt>sar -W</tt>; per-process: 10th field (min_flt) from /proc/PID/stat for minor-fault rate, or dynamic tracing [5]; OOM killer: <tt>dmesg | grep killed</tt></td></tr>
+<tr bgcolor="#e8ffe8"><td>Memory capacity</td><td>errors</td><td><tt>dmesg</tt> for physical failures; dynamic tracing, eg, SystemTap uprobes for failed malloc()s</td></tr>
+
+<tr bgcolor="#ffffe8"><td>Network Interfaces</td><td>utilization</td><td><tt>sar -n DEV 1</tt>, "rxKB/s"/max "txKB/s"/max; <tt>ip -s link</tt>, RX/TX tput / max bandwidth; /proc/net/dev, "bytes" RX/TX tput/max; nicstat "%Util" [6]</td></tr>
+<tr bgcolor="#ffffe8"><td>Network Interfaces</td><td>saturation</td><td><tt>ifconfig</tt>, "overruns", "dropped"; <tt>netstat -s</tt>, "segments retransmited"; <tt>sar -n EDEV</tt>, *drop and *fifo metrics; /proc/net/dev, RX/TX "drop"; nicstat "Sat" [6]; dynamic tracing for other TCP/IP stack queueing [7]</td></tr>
+<tr bgcolor="#ffffe8"><td>Network Interfaces</td><td>errors</td><td><tt>ifconfig</tt>, "errors", "dropped"; <tt>netstat -i</tt>, "RX-ERR"/"TX-ERR"; <tt>ip -s link</tt>, "errors"; <tt>sar -n EDEV</tt>, "rxerr/s" "txerr/s"; /proc/net/dev, "errs", "drop"; extra counters may be under /sys/class/net/...; dynamic tracing of driver function returns 76]</td></tr>
+
+<tr bgcolor="#e8e8ff"><td>Storage device I/O</td><td>utilization</td><td>system-wide: <tt>iostat -xz 1</tt>, "%util"; <tt>sar -d</tt>, "%util"; per-process: iotop; <tt>pidstat -d</tt>; /proc/PID/sched "se.statistics.iowait_sum"</td></tr>
+<tr bgcolor="#e8e8ff"><td>Storage device I/O</td><td>saturation</td><td><tt>iostat -xnz 1</tt>, "avgqu-sz" &gt; 1, or high "await"; <tt>sar -d</tt> same; LPE block probes for queue length/latency; dynamic/static tracing of I/O subsystem (incl. LPE block probes)</td></tr>
+<tr bgcolor="#e8e8ff"><td>Storage device I/O</td><td>errors</td><td>/sys/devices/.../ioerr_cnt; <tt>smartctl</tt>; dynamic/static tracing of I/O subsystem response codes [8]</td></tr>
+
+<tr bgcolor="#ffe8ff"><td>Storage capacity</td><td>utilization</td><td>swap: <tt>swapon -s</tt>; <tt>free</tt>; /proc/meminfo "SwapFree"/"SwapTotal"; file systems: "df -h"</td></tr>
+<tr bgcolor="#ffe8ff"><td>Storage capacity</td><td>saturation</td><td>not sure this one makes sense - once it's full, ENOSPC</td></tr>
+<tr bgcolor="#ffe8ff"><td>Storage capacity</td><td>errors</td><td><tt>strace</tt> for ENOSPC; dynamic tracing for ENOSPC; /var/log/messages errs, depending on FS</td></tr>
+
+<tr bgcolor="#e8ffff"><td>Storage controller</td><td>utilization</td><td><tt>iostat -xz 1</tt>, sum devices and compare to known IOPS/tput limits per-card</td></tr>
+<tr bgcolor="#e8ffff"><td>Storage controller</td><td>saturation</td><td>see storage device saturation, ...</td></tr>
+<tr bgcolor="#e8ffff"><td>Storage controller</td><td>errors</td><td>see storage device errors, ...</td></tr>
+
+<tr bgcolor="#e8ffff"><td>Network controller</td><td>utilization</td><td>infer from <tt>ip -s link</tt> (or /proc/net/dev) and known controller max tput for its interfaces</td></tr>
+<tr bgcolor="#e8ffff"><td>Network controller</td><td>saturation</td><td>see network interface saturation, ...</td></tr>
+<tr bgcolor="#e8ffff"><td>Network controller</td><td>errors</td><td>see network interface errors, ...</td></tr>
+
+<tr bgcolor="#fff8e0"><td>CPU interconnect</td><td>utilization</td><td>LPE (CPC) for CPU interconnect ports, tput / max</td></tr>
+<tr bgcolor="#fff8e0"><td>CPU interconnect</td><td>saturation</td><td>LPE (CPC) for stall cycles</td></tr>
+<tr bgcolor="#fff8e0"><td>CPU interconnect</td><td>errors</td><td>LPE (CPC) for whatever is available</td></tr>
+
+<tr bgcolor="#fff8e0"><td>Memory interconnect</td><td>utilization</td><td>LPE (CPC) for memory busses, tput / max; or CPI greater than, say, 5; CPC may also have local vs remote counters</td></tr>
+<tr bgcolor="#fff8e0"><td>Memory interconnect</td><td>saturation</td><td>LPE (CPC) for stall cycles</td></tr>
+<tr bgcolor="#fff8e0"><td>Memory interconnect</td><td>errors</td><td>LPE (CPC) for whatever is available</td></tr>
+
+<tr bgcolor="#fff8e0"><td>I/O interconnect</td><td>utilization</td><td>LPE (CPC) for tput / max if available; inference via known tput from iostat/ip/...</td></tr>
+<tr bgcolor="#fff8e0"><td>I/O interconnect</td><td>saturation</td><td>LPE (CPC) for stall cycles</td></tr>
+<tr bgcolor="#fff8e0"><td>I/O interconnect</td><td>errors</td><td>LPE (CPC) for whatever is available </td></tr>
+</table>
+<br>
+
+<ul>
+<li>[1] There can be some oddities with the %CPU from top/htop in virtualized environments; I'll update with details later when I can.</li>
+<li>CPU utilization: a single hot CPU can be caused by a single hot thread, or mapped hardware interrupt.  Relief of the bottleneck usually involves tuning to use more CPUs in parallel.</li>
+<li><tt>uptime</tt> "load average" (or /proc/loadavg) wasn't included for CPU metrics since Linux load averages include tasks in the uninterruptable state (usually I/O).</li>
+<li>[2] The man page for vmstat describes "r" as "The number of processes waiting for run time", which is either incorrect or misleading (on recent Linux distributions it's reporting those threads that are waiting, <i>and</i> threads that are running on-CPU; it's just the wait threads in other OSes).</li>
+<li>[3] There may be a way to measure per-process scheduling latency with perf's sched:sched_process_wait event, otherwise <tt>perf probe</tt> to dynamically trace the scheduler functions, although, the overhead under high load to gather and post-process many (100s of) thousands of events per second may make this prohibitive.  SystemTap can aggregate per-thread latency in-kernel to reduce overhead, although, last I tried schedtimes.stp (on FC16) it produced thousands of "unknown transition:" warnings.</li>
+<li>LPE == <a href="../perf.html">Linux Performance Events</a>, aka perf_events. This is a powerful observability toolkit that reads CPC and can also use static and dynamic tracing.  Its interface is the <tt>perf</tt> command.</li>
+<li>CPC == CPU Performance Counters (aka "Performance Instrumentation Counters" (PICs) or "Performance Monitoring Counters" (PMCs), or "Performance Monitoring Unit" (PMU) Hardware Events), read via programmable registers on each CPU by <tt>perf</tt> (which it was originally designed to do).  These have traditionally been hard to work with due to differences between CPUs.  LPE <tt>perf</tt> makes life easier by providing aliases for commonly used counters.  Be aware that there are usually many more made available by the processor, accessible by providing their hex values to <tt>perf stat -e</tt>.  Expect to spend some quality time (days) with the processor vendor manuals when trying to use these.  (My short <a href="http://www.beginningwithi.com/comments/2010/04/30/performance-instrumentation-counters/">video</a> about CPC may be useful, despite not being on Linux).</li>
+<li>[4] There aren't many error-related events in the recent Intel and AMD processor manuals; be aware that the public manuals may not show a complete list of events.</li>
+<li>[5] The goal is a measure of memory capacity saturation - the degree to which a process is driving the system beyond its ability (and causing paging/swapping).  High fault latency works well, but there isn't a standard LPE probe or existing SystemTap example of this (roll your own using dynamic tracing).  Another metric that may serve a similar goal is minor-fault rate by process, which could be watched from /proc/PID/stat.  This should be available in <tt>htop</tt> as MINFLT.</li>
+<li>[6] Tim Cook ported nicstat to Linux; it can be found on <a href="http://sourceforge.net/projects/nicstat/">sourceforge</a> or his <a href="https://blogs.oracle.com/timc/nicstat-the-solaris-and-linux-network-monitoring-tool-you-did-not-know-you-needed">blog</a>.</li>
+<li>[7] Dropped packets are included as both saturation and error indicators, since they can occur due to both types of events.</li>
+<li>[8] This includes tracing functions from different layers of the I/O subsystem: block device, SCSI, SATA, IDE, ...  Some static probes are available (LPE "scsi" and "block" tracepoint events), else use dynamic tracing.</li>
+<li>CPI == Cycles Per Instruction (others use IPC == Instructions Per Cycle).</li>
+<li>I/O interconnect: this includes the CPU to I/O controller busses, the I/O controller(s), and device busses (eg, PCIe).</li>
+<li>Dynamic Tracing: Allows custom metrics to be developed, live in production.  Options on Linux include: LPE's "perf probe", which has some basic functionality (function entry and variable tracing), although in a trace-n-dump style that can cost performance; SystemTap (in my <a href="http://dtrace.org/blogs/brendan/2011/10/15/using-systemtap/">experience</a>, almost unusable on CentOS/Ubuntu, but much more stable on Fedora); DTrace-for-Linux, either the Paul Fox port (which I've tried) or the OEL port (which Adam has <a href="http://dtrace.org/blogs/ahl/2012/02/23/dtrace-oel-update/">tried</a>), both projects very much in beta.</li>
+</ul>
+
+<a name="Software"></a>
+<h2>Software Resources</h2>
+
+<table border=1 width="100%">
+<tr><th>component</th><th>type</th><th>metric</th></tr>
+
+<!SW-START>
+<tr bgcolor="#f0e0ff"><td>Kernel mutex</td><td>utilization</td><td>With CONFIG_LOCK_STATS=y, /proc/lock_stat "holdtime-totat" / "acquisitions" (also see "holdtime-min", "holdtime-max") [8]; dynamic tracing of lock functions or instructions (maybe)</td></tr>
+<tr bgcolor="#f0e0ff"><td>Kernel mutex</td><td>saturation</td><td>With CONFIG_LOCK_STATS=y, /proc/lock_stat "waittime-total" / "contentions" (also see "waittime-min", "waittime-max"); dynamic tracing of lock functions or instructions (maybe); spinning shows up with profiling (<tt>perf record -a -g -F 997 ...</tt>, <tt>oprofile</tt>, dynamic tracing)</td></tr>
+<tr bgcolor="#f0e0ff"><td>Kernel mutex</td><td>errors</td><td>dynamic tracing (eg, recusive mutex enter); other errors can cause kernel lockup/panic, debug with kdump/<tt>crash</tt></td></tr>
+
+<tr bgcolor="#e0f0ff"><td>User mutex</td><td>utilization</td><td><tt>valgrind --tool=drd --exclusive-threshold=...</tt> (held time); dynamic tracing of lock to unlock function time</td></tr>
+<tr bgcolor="#e0f0ff"><td>User mutex</td><td>saturation</td><td><tt>valgrind --tool=drd</tt> to infer contention from held time; dynamic tracing of synchronization functions for wait time; profiling (oprofile, PEL, ...) user stacks for spins</td></tr>
+<tr bgcolor="#e0f0ff"><td>User mutex</td><td>errors</td><td><tt>valgrind --tool=drd</tt> various errors; dynamic tracing of pthread_mutex_lock() for EAGAIN, EINVAL, EPERM, EDEADLK, ENOMEM, EOWNERDEAD, ...</tt></td></tr>
+
+<tr bgcolor="#f0ffe0"><td>Task capacity</td><td>utilization</td><td><tt>top</tt>/<tt>htop</tt>, "Tasks" (current); <tt>sysctl kernel.threads-max</tt>, /proc/sys/kernel/threads-max (max)</td></tr>
+<tr bgcolor="#f0ffe0"><td>Task capacity</td><td>saturation</td><td>threads blocking on memory allocation; at this point the page scanner should be running (sar -B "pgscan*"), else examine using dynamic tracing</td></tr>
+<tr bgcolor="#f0ffe0"><td>Task capacity</td><td>errors</td><td>"can't fork()" errors; user-level threads: pthread_create() failures with EAGAIN, EINVAL, ...; kernel: dynamic tracing of kernel_thread() ENOMEM</td></tr>
+
+<tr bgcolor="#fffff0"><td>File descriptors</td><td>utilization</td><td>system-wide: <tt>sar -v</tt>, "file-nr" vs /proc/sys/fs/file-max; <tt>dstat --fs</tt>, "files"; or just /proc/sys/fs/file-nr; per-process: <tt>ls /proc/PID/fd | wc -l</tt> vs <tt>ulimit -n</tt></td></tr>
+<tr bgcolor="#fffff0"><td>File descriptors</td><td>saturation</td><td>does this make sense?  I don't think there is any queueing or blocking, other than on memory allocation.</td></tr>
+<tr bgcolor="#fffff0"><td>File descriptors</td><td>errors</td><td><tt>strace</tt> errno == EMFILE on syscalls returning fds (eg, open(), accept(), ...).</td></tr>
+</table>
+
+<ul>
+<li>[8] Kernel lock analysis used to be via lockmeter, which had an interface called "lockstat".</li>
+</ul>
+
+<h2>What's Next</h2>
+
+See <a href="../usemethod.html">the USE Method</a> for the follow-up strategies after identifying a possible bottleneck.  If you complete this checklist but still have a performance issue, move onto other strategies: drill-down analysis and latency analysis.
+
+<a name="Acknowledgements"></a>
+<h2>Acknowledgements</h2>
+
+Resources used:
+
+<ul>
+<li><a href="http://dag.wieers.com/home-made/dstat/#">dstat</a> documentation</li>
+<li><a href="http://www.cyberciti.biz/tips/top-linux-monitoring-tools.html">20 Linux monitoring tools</a> every sysadmin should know</li>
+<li><a href="http://bhami.com/rosetta.html">Rosetta Stone for Unix</a></li>
+<li><a href="http://sourceware.org/systemtap/examples/">SystemTap Example Scripts</a> for schedtimes.stp</li>
+<li><a href="http://code.google.com/p/kernel/wiki/PerfUserGuide">PerfUserGuide</a> Linux profiling with Perf (LPE)</li>
+<li><a href="https://lkml.org/lkml/2009/6/6/149">perf announcements</a> on LKML by Ingo Molnar, Peter Zijlstra, ...</li>
+<li><a href="https://perf.wiki.kernel.org/">Perf</a> homepage</li>
+<li><a href="http://lwn.net/Articles/252835/">lock_stat</a> by Peter Zijlstra</li>
+<li><a href="http://oss.sgi.com/projects/lockmeter/als2000/als2000lock.html">lockmeter</a>, for historical interest (now done via lock_stat)</li>
+<li><a href="http://oprofile.sourceforge.net/docs/">oprofile</a> by John Levon</li>
+<li><a href="http://valgrind.org/docs/manual/drd-manual.html">Valgrind DRD</a> which has a good list (8.2.4) of detected lock errors</li>
+<li>Linux kernel source</li>
+<li>man pages</li>
+</ul>
+
+<p>Filling this this checklist has required a lot of research, testing and experimentation.  Please reference back to this post if it helps you develop related material.</p>
+
+<p>It's quite possible I've missed something or included the wrong metric somewhere (sorry); I'll update the post to fix these up as they are understood.</p>
+
+</div>
+</font>
+<hr>
+Last updated: 29-Sep-2013</br>
+
+</body>
+</html>
