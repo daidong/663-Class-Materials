@@ -1,107 +1,75 @@
-# Lab 2 Report (Route B): PagerUSE — Oncall Debugging with USE
+# Lab 2 Report: Tail Latency Debugging Under Memory Pressure (Route A)
 
 **Name:**
 
-**Scenario ID:** (easy_memory_major_faults / medium_multi_cause / hard_misleading_network)
+## 1. Environment
 
----
+- VM / OS version:
+- CPU model (if available):
+- RAM:
+- Swap enabled? (yes/no, size):
+- Kernel version (`uname -r`):
 
-## 1. Symptom (what page woke you up)
+## 2. Workload
 
-- Alert(s):
-- Impact scope: (which service, what % requests)
-- Timeline: (when started; any relevant change events)
+- Command:
+- Parameters (`--iters`, `--workset-mb`, `--touch-per-iter`, etc.):
+- Output format:
 
-## 2. Initial hypotheses (USE first, mechanism later)
+## 3. Methodology and experimental control
 
-Write 2–3 bullet hypotheses. At least one must be an *alternative* you will later rule out.
+- Warm-up:
+- Number of samples (iterations):
+- Repeats:
+- What was held constant:
+- What was changed:
 
-- Hypothesis A (resource + mechanism guess):
-- Hypothesis B (resource + mechanism guess):
-- Why you picked these first (from alerts/context):
+## 4. Results: tail latency
 
-## 3. Investigation transcript (key commands + key lines)
+| Condition | p50 (us) | p90 (us) | p99 (us) | Notes |
+|----------|----------:|---------:|---------:|------|
+| Baseline | | | | |
+| Pressured | | | | |
 
-You do **not** need to paste full outputs. Paste the important lines and explain why they matter.
+## 5. Evidence chain
 
-### 3.1 CPU
+You must include at least **two independent signals**.
 
-Commands + key lines:
+### Signal A: tail latency
 
-```
-<command>
-<key output lines>
-```
+- p99 increased from ___ to ___
 
-Interpretation:
+### Signal B: fault counters (perf)
 
-### 3.2 Memory
-
-Commands + key lines:
-
-```
-<command>
-<key output lines>
-```
-
-Interpretation:
-
-### 3.3 Disk / Storage
-
-Commands + key lines:
+Paste key lines from `perf stat`:
 
 ```
-<command>
-<key output lines>
+<perf output>
 ```
 
-Interpretation:
-
-### 3.4 Network (only if relevant)
-
-Commands + key lines:
+### Signal C (optional): /proc/vmstat
 
 ```
-<command>
-<key output lines>
+pgfault: ___
+pgmajfault: ___
 ```
 
-Interpretation:
+## 6. Mechanism explanation
 
-## 4. Evidence chain (must include ≥ 2 independent signals)
+Write 1–2 paragraphs:
 
-Write a short evidence chain:
+- What changed under the cgroup limit?
+- Why would that change increase tail latency?
+- Why do your measurements support “major faults / paging” specifically?
 
-> symptom → resource → saturation/waiting signal → mechanism → why p99 (not average)
+## 7. Fix and verification
 
-- Signal 1:
-- Signal 2:
-- (Optional) Signal 3:
+| Condition | p99 (us) | major-faults | Notes |
+|----------|----------:|-------------:|------|
+| Pressured (before fix) | | | |
+| After fix | | | |
 
-## 5. Mechanism explanation (1–2 paragraphs)
+## 8. Reflection
 
-Explain the OS slow path you believe dominates p99:
-
-- queueing / scheduler delay
-- major faults / paging
-- storage tail (fsync/writeback)
-- retry amplification (symptom != root cause)
-
-Use your evidence to justify causality.
-
-## 6. Mitigation + verification plan
-
-### Mitigation
-
-- What would you change first (and why):
-
-### What to verify next (at least 2)
-
-- Verify #1:
-- Verify #2:
-- (Optional) Verify #3:
-
-## 7. Reflection
-
-- One thing you almost misdiagnosed (and what corrected you):
-- One extra measurement you wish you had:
+- One thing that surprised you:
+- One measurement you would add next time:
