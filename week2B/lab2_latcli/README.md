@@ -19,7 +19,7 @@ make -C week2B/lab2_latcli
 ## Run (baseline)
 
 ```bash
-./week2B/lab2_latcli/latcli --iters 20000 --workset-mb 256 --touch-per-iter 64 > baseline.log
+./week2B/lab2_latcli/latcli --iters 20000 --workset-mb 256 --touch-per-iter 1024 > baseline.log
 python3 week2B/lab2_latcli/scripts/latency_to_csv.py baseline.log baseline.csv
 python3 week2B/lab2_latcli/scripts/percentiles.py baseline.csv
 ```
@@ -31,7 +31,7 @@ sudo mkdir -p /sys/fs/cgroup/lab2
 printf "%d" $((512*1024*1024)) | sudo tee /sys/fs/cgroup/lab2/memory.max
 
 sudo bash week2B/lab2_latcli/scripts/run_in_cgroup.sh /sys/fs/cgroup/lab2 \
-  ./week2B/lab2_latcli/latcli --iters 20000 --workset-mb 256 --touch-per-iter 64 > pressured.log
+  ./week2B/lab2_latcli/latcli --iters 20000 --workset-mb 256 --touch-per-iter 1024 > pressured.log
 ```
 
 ## Parameters
@@ -43,5 +43,6 @@ sudo bash week2B/lab2_latcli/scripts/run_in_cgroup.sh /sys/fs/cgroup/lab2 \
 
 ## Notes
 
+- If you see many samples like `latency_us=0` in the baseline, it is usually **measurement quantization**: a single iteration finished in <1µs and the program prints integer microseconds, so it rounds down to 0. To reduce 0s, increase `--touch-per-iter` (we default to `1024` in the lab commands).
 - Under a tight `memory.max`, touching a large working set can trigger reclaim and (if swap is enabled) paging.
 - If you see OOM-kill, reduce `--workset-mb` or increase `memory.max`.
