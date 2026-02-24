@@ -5,7 +5,10 @@
 //
 // Use with nice/affinity to study tail latency.
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
+
 #include <errno.h>
 #include <pthread.h>
 #include <sched.h>
@@ -39,7 +42,7 @@ static void *worker(void *p) {
         x = x * 1664525ull + 1013904223ull;
         if ((x & 0xFFFFF) == 0) {
             // Small pause to reduce terminal/measurement noise.
-            asm volatile("" ::: "memory");
+            __asm__ volatile("" ::: "memory");
         }
     }
     return NULL;

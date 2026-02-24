@@ -6,8 +6,12 @@
 // Output format (one line per iteration):
 //   iter=123 latency_us=847
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
+#ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
+#endif
 
 #include <errno.h>
 #include <inttypes.h>
@@ -17,12 +21,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-
-// Some environments require explicit feature macros for CPU affinity and
-// clock_nanosleep(TIMER_ABSTIME).
-#ifndef _POSIX_C_SOURCE
-#define _POSIX_C_SOURCE 200809L
-#endif
 
 static uint64_t ts_to_ns(const struct timespec *ts) {
     return (uint64_t)ts->tv_sec * 1000000000ull + (uint64_t)ts->tv_nsec;
