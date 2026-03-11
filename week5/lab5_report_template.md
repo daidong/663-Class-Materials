@@ -28,16 +28,7 @@
 
 ### 2.2 Architecture Overview
 
-<Describe your implementation in 3-5 sentences. What's the overall flow?>
-
-### 2.3 Key Design Decisions
-
-<List 2-3 important design decisions you made and why>
-
-1. **Decision:**
-  **Rationale:**
-2. **Decision:**
-  **Rationale:**
+<Describe this project in 3-5 sentences. What's the overall flow?>
 
 ---
 
