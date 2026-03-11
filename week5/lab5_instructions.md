@@ -1,10 +1,34 @@
-# Lab 4: Mini Container Runtime (minictl)
+# Lab 5: Mini Container Runtime (minictl)
 
 > **Goal:** Build a minimal Linux container runtime to understand how namespaces and cgroups work together to create container isolation.
+
+---
+
+### ⚠️ WARNING: DO NOT ENTER ROOT MODE ⚠️
+
+**Do NOT use `sudo su`, `sudo -i`, `sudo -s`, or `sudo bash` to switch to a root shell at any point during this lab!**
+
+> When root access is needed (Parts 1 and 3), use `sudo` before **individual commands** only (e.g., `sudo ./minictl chroot ...`). Never open a persistent root session.
+>
+> Entering root mode causes many hard-to-debug problems:
+>
+> - Environment variables (`$ROOTFS`, `$MINICTL`) are lost
+> - File ownership and permissions become incorrect
+> - Cgroup operations behave unexpectedly
+> - Part 2 (user namespaces) will break — it is designed to run **without** sudo
+
+**If you accidentally entered root mode, type `exit` to return to your normal user and re-export your environment variables.**
+
+---
+
+### ⚠️ WARNING: Whenever you changed your code, save and `make clean && make` ⚠️
+
+---
 
 ## Overview
 
 You will implement `minictl` in three parts:
+
 - **Part 1:** Simple sandbox using `chroot`
 - **Part 2:** Full namespace isolation (UTS, PID, Mount, User)
 - **Part 3:** Resource limits using cgroups v2
@@ -31,20 +55,15 @@ This lab directly uses the course's minictl assignment (Parts 1-3).
 
 ### Memory limit not enforced
 
-- Check if cgroup was created: `ls /sys/fs/cgroup/minictl-*`
+- Check if cgroup was created: `ls /sys/fs/cgroup/minictl-`*
 - Check if process was added: `cat /sys/fs/cgroup/minictl-*/cgroup.procs`
 
 ---
 
 ## Prerequisites
 
-### Root Access
-
-- **Part 1**: `chroot()` requires `CAP_SYS_CHROOT` — prefix commands with `sudo`
-- **Part 2**: Uses `CLONE_NEWUSER` to create a user namespace, which grants capabilities without root — **do NOT use `sudo`**
-- **Part 3**: Writing to `/sys/fs/cgroup/` requires root — prefix commands with `sudo`
-
 > **Ubuntu 24.04+ Note:** If Part 2 gives "Operation not permitted" on `clone()`, AppArmor may be restricting unprivileged user namespaces. Fix with:
+>
 > ```bash
 > sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 > ```
@@ -58,6 +77,8 @@ This lab directly uses the course's minictl assignment (Parts 1-3).
 ### Verify Your Environment
 
 ```bash
+# Enter the folder week5
+
 # Check kernel version
 uname -r
 # Should be 5.10+ for best cgroup v2 support
@@ -79,7 +100,8 @@ cat /proc/1/cgroup
 
 You need a minimal Linux rootfs. Options:
 
-**Option A: Use Alpine Linux (recommended)**
+**Option A: Use Alpine Linux (Highly recommended!!)**
+
 ```bash
 mkdir -p rootfs
 # Detect system architecture and download matching Alpine mini root filesystem
@@ -90,12 +112,14 @@ tar -xzf alpine-minirootfs-3.18.0-${ARCH}.tar.gz -C rootfs
 
 > **Important:** The rootfs architecture must match your system. Use `uname -m` to check — common values are `x86_64` and `aarch64`. Using a mismatched rootfs will cause `Exec format error` when running commands.
 
-**Option B: Use debootstrap (Debian/Ubuntu)**
+Option B: Use debootstrap (Debian/Ubuntu)
+
 ```bash
 sudo debootstrap --variant=minbase bullseye rootfs http://deb.debian.org/debian
 ```
 
 **Verify rootfs:**
+
 ```bash
 ls rootfs/bin/sh
 # Should exist
@@ -123,10 +147,12 @@ make
 ```
 
 If build fails, check:
+
 - GCC installed: `gcc --version`
 - You defined `_GNU_SOURCE` for `clone()` flags
 
 Then, set environment variables:
+
 ```bash
 cd ..
 export ROOTFS=$(pwd)/rootfs
@@ -150,6 +176,7 @@ cd minictl
 Implement `./minictl chroot <rootfs> <cmd> [args...]`
 
 The command should:
+
 1. `fork()` a child process
 2. Child: `chdir(rootfs)`, `chroot(rootfs)`, `chdir("/")`
 3. Child: `execvp(cmd, args)`
@@ -164,10 +191,10 @@ The command should:
 The starter code already has the fork/waitpid framework in place. Inside the child process block (`if (child == 0)`), you'll find the chroot logic commented out with a `TODO` marker. You need to:
 
 1. **Uncomment** the 4 steps inside the child block:
-   - `chdir(rootfs)` — change to rootfs directory
-   - `chroot(rootfs)` — set new root
-   - `chdir("/")` — chroot doesn't change cwd, so you must cd to /
-   - `execvp(cmd_args[0], cmd_args)` — execute the command
+  - `chdir(rootfs)` — change to rootfs directory
+  - `chroot(rootfs)` — set new root
+  - `chdir("/")` — chroot doesn't change cwd, so you must cd to /
+  - `execvp(cmd_args[0], cmd_args)` — execute the command
 
 After uncommenting, the child block should look like:
 
@@ -186,7 +213,10 @@ if (child == 0) {
 ### Test Part 1
 
 ```bash
+# remake
+make clean && make
 # Manual test
+export ROOTFS=~/rootfs
 sudo ./minictl chroot $ROOTFS /bin/sh -c 'pwd; ls /; hostname'
 
 # Expected:
@@ -196,7 +226,9 @@ sudo ./minictl chroot $ROOTFS /bin/sh -c 'pwd; ls /; hostname'
 
 # Run test script
 cd tests
-sudo -E bash test_part1_chroot.sh
+sudo ROOTFS=../../rootfs MINICTL=../minictl bash test_part1_chroot.sh
+# Go back to minictl/ directory
+cd ..
 ```
 
 ### What chroot Does NOT Isolate
@@ -224,6 +256,7 @@ sudo ./minictl chroot $ROOTFS /bin/cat /etc/resolv.conf
 Implement `./minictl run [--hostname=NAME] <rootfs> <cmd> [args...]`
 
 The command should:
+
 1. Use `clone()` with namespace flags
 2. Set up user namespace mappings (parent)
 3. Set hostname, mount /proc, pivot_root (child)
@@ -233,20 +266,13 @@ The command should:
 
 - `src/run_cmd.c` — Complete `setup_user_namespace()` and `setup_mounts()`, remove placeholder prints in `cmd_run()`
 
-### What's Already Done
-
-The starter code already provides:
-- `cmd_run()`: pipe creation, stack allocation, `clone()` with namespace flags, `waitpid()` — all working
-- `child_func()`: pipe synchronization, hostname setting, calling `setup_mounts()`, `execvp()` — all working
-- `setup_user_namespace()`: Step 1 (write "deny" to setgroups) — done
-
 ### What to Do
 
 You need to complete **two functions** and remove some placeholder prints:
 
-#### 1. Complete `setup_user_namespace()` — add uid_map and gid_map writes
+#### 1. Complete `setup_user_namespace()`
 
-Step 1 (setgroups deny) is already implemented. For **Step 2** and **Step 3**, the `path` and `content` strings are already constructed — you just need to replace the `printf("TODO: ...")` lines with actual `open()` / `write()` / `close()` calls, following the same pattern as Step 1.
+After reading the code, you just need to replace the comment `TODO: ...` lines with actual `open()` / `write()` / `close()` calls given below.
 
 After your changes, Steps 2 and 3 should look like:
 
@@ -270,7 +296,9 @@ close(fd);
 
 #### 2. Complete `setup_mounts()` — replace chroot fallback with pivot_root
 
-The current code just does a simple `chroot` as a placeholder. Replace the entire function body (from `printf("TODO: ...")` through the fallback chroot) with the full mount setup:
+The current code just does a simple `chroot` as a placeholder. 
+
+First, read and understand the comment. Then replace the entire function body (comment `TODO: ...`) with the full mount setup:
 
 ```c
 static int setup_mounts(const char *rootfs) {
@@ -303,28 +331,31 @@ static int setup_mounts(const char *rootfs) {
 }
 ```
 
-
 ### Test Part 2
 
 ```bash
 # Make sure you're in the minictl/ directory
-cd ~/path-to-your-project/minictl
+
+# Remake
+make clean && make
 
 # Test hostname isolation
-./minictl run --hostname=testcontainer $ROOTFS /bin/hostname
+sudo ./minictl run --hostname=testcontainer $ROOTFS /bin/hostname
 # Expected: testcontainer
 
 # Test PID isolation
-./minictl run $ROOTFS /bin/sh -c 'echo $$'
+sudo ./minictl run $ROOTFS /bin/sh -c 'echo $$'
 # Expected: 1
 
 # Test user isolation (rootless)
-./minictl run $ROOTFS /bin/sh -c 'id'
+sudo ./minictl run $ROOTFS /bin/sh -c 'id'
 # Expected: uid=0(root) gid=0(root) ...
 
 # Run test script
 cd tests
-bash test_part2_namespaces.sh
+ROOTFS=~/rootfs MINICTL=../minictl bash test_part2_namespaces.sh
+# Go back to minictl/ directory
+cd ..
 ```
 
 ---
@@ -335,95 +366,59 @@ bash test_part2_namespaces.sh
 
 Add `--mem-limit=BYTES` and `--cpu-limit=PCT` options.
 
-```bash
-sudo ./minictl run --mem-limit=64M --cpu-limit=10 $ROOTFS /bin/sh
-```
-
 ### Files to Edit
 
-- `src/cgroup.c` — Complete the write operations in `cgroup_set_memory()`, `cgroup_set_cpu()`, and `cgroup_add_process()`
-- `src/run_cmd.c` — Uncomment the cgroup calls in `cmd_run()` (lines with `cgroup_create`, `cgroup_set_memory`, `cgroup_set_cpu`, `cgroup_add_process`, `cgroup_cleanup`)
+- `src/cgroup.c` — Uncomment and complete the write operations
+- `src/run_cmd.c` — Uncomment the cgroup calls in `cmd_run()`
 
-### Implementation Steps
+### What to Do
 
-#### 1. Create cgroup for container
+#### 1. `cgroup_set_memory()` — uncomment the open/write/close block
+
+The code is already written but commented out. Just remove the `/*` and `*/` around it. 
+
+#### 2. `cgroup_set_cpu()` — replace the TODO comment with open/write/close
+
+The `path` and `content` variables are already constructed for you. Replace the `/* TODO: ... */` line with:
 
 ```c
-int setup_cgroup(pid_t pid, uint64_t mem_limit, int cpu_limit) {
-    char cgroup_path[256];
-    snprintf(cgroup_path, sizeof(cgroup_path), 
-             "/sys/fs/cgroup/minictl-%d", pid);
-    
-    // Create cgroup directory
-    if (mkdir(cgroup_path, 0755) < 0 && errno != EEXIST) {
-        perror("mkdir cgroup");
-        return -1;
-    }
-    
-    return 0;
+int fd = open(path, O_WRONLY);
+if (fd < 0) {
+    perror("open cpu.max");
+    return -1;
 }
-```
-
-#### 2. Set memory limit
-
-```c
-int set_memory_limit(pid_t pid, uint64_t limit) {
-    char path[256];
-    snprintf(path, sizeof(path), 
-             "/sys/fs/cgroup/minictl-%d/memory.max", pid);
-    
-    int fd = open(path, O_WRONLY);
-    if (fd < 0) return -1;
-    
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%lu", limit);
-    write(fd, buf, strlen(buf));
+if (write(fd, content, strlen(content)) < 0) {
+    perror("write cpu.max");
     close(fd);
-    
-    return 0;
+    return -1;
 }
+close(fd);
 ```
 
-#### 3. Set CPU limit
+#### 3. `cgroup_add_process()` — same thing, replace the TODO comment
+
+Again, `path` and `content` are ready. Replace the `/* TODO: ... */` line with:
 
 ```c
-int set_cpu_limit(pid_t pid, int percent) {
-    char path[256];
-    snprintf(path, sizeof(path), 
-             "/sys/fs/cgroup/minictl-%d/cpu.max", pid);
-    
-    int fd = open(path, O_WRONLY);
-    if (fd < 0) return -1;
-    
-    // percent% of one CPU = percent*1000 quota per 100000 period
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%d 100000", percent * 1000);
-    write(fd, buf, strlen(buf));
-    close(fd);
-    
-    return 0;
+int fd = open(path, O_WRONLY);
+if (fd < 0) {
+    perror("open cgroup.procs");
+    return -1;
 }
+if (write(fd, content, strlen(content)) < 0) {
+    perror("write cgroup.procs");
+    close(fd);
+    return -1;
+}
+close(fd);
 ```
 
-#### 4. Add process to cgroup
+#### 4. `run_cmd.c` — uncomment the cgroup calls
 
-```c
-int add_to_cgroup(pid_t pid) {
-    char path[256];
-    snprintf(path, sizeof(path), 
-             "/sys/fs/cgroup/minictl-%d/cgroup.procs", pid);
-    
-    int fd = open(path, O_WRONLY);
-    if (fd < 0) return -1;
-    
-    char buf[32];
-    snprintf(buf, sizeof(buf), "%d", pid);
-    write(fd, buf, strlen(buf));
-    close(fd);
-    
-    return 0;
-}
-```
+In `cmd_run()`, find the cgroup section and:
+
+- **Uncomment** the 4 lines: `cgroup_create`, `cgroup_set_memory`, `cgroup_set_cpu`, `cgroup_add_process`
+- **Uncomment** `cgroup_cleanup(child)` further down
 
 ### Test Part 3
 
@@ -435,6 +430,8 @@ gcc -O2 -static -o cpu_hog cpu_hog.c
 gcc -O2 -static -o mem_hog mem_hog.c
 sudo mkdir -p $ROOTFS/usr/local/bin
 sudo cp cpu_hog mem_hog $ROOTFS/usr/local/bin/
+
+cd ..
 ```
 
 > **Why `-static`?** Alpine rootfs uses musl libc, not glibc. A dynamically linked binary compiled on Ubuntu will fail with "No such file or directory" because the glibc dynamic linker (`/lib/ld-linux-*.so`) doesn't exist inside Alpine. Static linking makes the binary self-contained.
@@ -442,20 +439,23 @@ sudo cp cpu_hog mem_hog $ROOTFS/usr/local/bin/
 Then test:
 
 ```bash
-cd ..
+# Remake
+make clean && make
 # Test memory limit (should be killed around 64MB)
 sudo ./minictl run --mem-limit=64M $ROOTFS /usr/local/bin/mem_hog
 
 # Test CPU limit (should run at ~10% in top)
 sudo ./minictl run --cpu-limit=10 $ROOTFS /usr/local/bin/cpu_hog &
-top -p $!  # Observe CPU usage
+top  # Observe CPU usage
 
 # After observing, press 'q' to exit top, then kill the background process:
-kill %1
+kill %1 # or ctrl + c
 
 # Run test script
 cd tests
-sudo -E bash test_part3_cgroups.sh
+sudo ROOTFS=../../rootfs MINICTL=../minictl bash test_part3_cgroups.sh
+# Go back to minictl/ directory
+cd ..
 ```
 
 ---
@@ -467,14 +467,17 @@ sudo -E bash test_part3_cgroups.sh
 Measure time to start and exit a simple command:
 
 ```bash
-# Baseline: fork+exec
-time for i in $(seq 100); do /bin/true; done
+# baseline (with sudo)
+time for i in $(seq 500); do sudo /bin/true; done
 
-# chroot mode
-time for i in $(seq 100); do sudo ./minictl chroot $ROOTFS /bin/true; done
+# chroot
+time for i in $(seq 500); do sudo ./minictl chroot $ROOTFS /bin/true; done
 
-# Full namespace mode (no sudo needed)
-time for i in $(seq 100); do ./minictl run $ROOTFS /bin/true; done
+# namespace
+time for i in $(seq 500); do sudo ./minictl run $ROOTFS /bin/true; done
+
+# namespace + cgroup
+time for i in $(seq 500); do sudo ./minictl run --mem-limit=64M --cpu-limit=50 $ROOTFS /bin/true; done
 ```
 
 Record average startup time for each mode.
@@ -486,6 +489,7 @@ Check memory usage of minictl process vs. direct execution.
 ### 3. CPU Limit Accuracy
 
 With `--cpu-limit=25`, observe actual CPU usage in `top`:
+
 - Is it exactly 25%?
 - What causes deviation?
 
@@ -505,11 +509,11 @@ Use the template provided. Must include:
 
 1. **Implementation summary** — How each part works
 2. **Test results** — Screenshots or logs showing:
-   - Hostname isolation (Part 2)
-   - PID 1 inside container (Part 2)
-   - Rootless operation (Part 2)
-   - Memory limit enforcement (Part 3)
-   - CPU limit enforcement (Part 3)
+  - Hostname isolation (Part 2)
+  - PID 1 inside container (Part 2)
+  - Rootless operation (Part 2)
+  - Memory limit enforcement (Part 3)
+  - CPU limit enforcement (Part 3)
 3. **Overhead measurement** — Startup time comparison
 4. **Reflection** — What did you learn? What surprised you?
 
@@ -517,13 +521,15 @@ Use the template provided. Must include:
 
 ## Grading Rubric
 
-| Criterion | Points |
-|-----------|--------|
-| Part 1 works (chroot) | 20 |
-| Part 2 works (namespaces) | 35 |
-| Part 3 works (cgroups) | 25 |
-| Overhead measurement | 10 |
-| Code quality and report | 10 |
+
+| Criterion                 | Points |
+| ------------------------- | ------ |
+| Part 1 works (chroot)     | 20     |
+| Part 2 works (namespaces) | 35     |
+| Part 3 works (cgroups)    | 25     |
+| Overhead measurement      | 10     |
+| Code quality and report   | 10     |
+
 
 ---
 
@@ -534,3 +540,4 @@ Use the template provided. Must include:
 - `man 7 cgroups` — cgroups overview
 - `man 2 pivot_root` — pivot_root system call
 - "Containers from Scratch" — Liz Rice (video/blog)
+

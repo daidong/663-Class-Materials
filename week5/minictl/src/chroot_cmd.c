@@ -14,27 +14,6 @@
 #include "minictl.h"
 
 int cmd_chroot(int argc, char **argv) {
-    /*
-     * TODO: Implement Part 1
-     *
-     * Usage: minictl chroot <rootfs> <cmd> [args...]
-     *
-     * Steps:
-     * 1. Parse arguments: argv[0] = rootfs, argv[1...] = cmd and args
-     * 2. fork() a child process
-     * 3. In child:
-     *    a. chdir(rootfs)
-     *    b. chroot(rootfs)
-     *    c. chdir("/") - important! chroot doesn't change cwd
-     *    d. execvp(cmd, args)
-     * 4. In parent:
-     *    a. waitpid() for child
-     *    b. Return child's exit status
-     *
-     * Error handling:
-     * - Check argc >= 2 (need rootfs and cmd)
-     * - Check all syscalls for errors and use perror()
-     */
 
     if (argc < 2) {
         fprintf(stderr, "Usage: minictl chroot <rootfs> <cmd> [args...]\n");
@@ -63,7 +42,7 @@ int cmd_chroot(int argc, char **argv) {
         }
 
         // Step 2: Chroot into rootfs
-        if (chroot(rootfs) < 0) {
+        if (chroot(".") < 0) {
             perror("chroot");
             exit(1);
         }

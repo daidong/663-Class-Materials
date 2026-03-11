@@ -38,24 +38,6 @@ struct child_args {
  * the child continues execution.
  */
 static int setup_user_namespace(pid_t child_pid) {
-    /*
-     * TODO: Implement user namespace setup
-     *
-     * Steps:
-     * 1. Write "deny" to /proc/<child_pid>/setgroups
-     *    (Required before writing gid_map)
-     *
-     * 2. Write uid_map: "0 <your_uid> 1"
-     *    This maps UID 0 inside container to your UID on host
-     *
-     * 3. Write gid_map: "0 <your_gid> 1"
-     *    This maps GID 0 inside container to your GID on host
-     *
-     * Use snprintf to construct paths like:
-     *   /proc/12345/setgroups
-     *   /proc/12345/uid_map
-     *   /proc/12345/gid_map
-     */
 
     char path[PATH_MAX];
     char content[64];
@@ -75,13 +57,11 @@ static int setup_user_namespace(pid_t child_pid) {
     }
     close(fd);
 
-    /* TODO: Step 2: Write uid_map */
     snprintf(path, sizeof(path), "/proc/%d/uid_map", child_pid);
     snprintf(content, sizeof(content), "0 %d 1", getuid());
     /* TODO: open, write, close */
     printf("TODO: Write '%s' to %s\n", content, path);
 
-    /* TODO: Step 3: Write gid_map */
     snprintf(path, sizeof(path), "/proc/%d/gid_map", child_pid);
     snprintf(content, sizeof(content), "0 %d 1", getgid());
     /* TODO: open, write, close */
@@ -99,7 +79,7 @@ static int setup_mounts(const char *rootfs) {
     /*
      * TODO: Implement mount namespace setup
      *
-     * Steps:
+     * Targets:
      * 1. Make current mounts private (don't propagate to host):
      *    mount(NULL, "/", NULL, MS_REC | MS_PRIVATE, NULL)
      *
@@ -122,27 +102,9 @@ static int setup_mounts(const char *rootfs) {
      * 7. Mount /proc:
      *    mount("proc", "/proc", "proc", 0, NULL)
      *
-     * Alternative: If pivot_root fails, fall back to chroot
-     */
-
-    printf("TODO: setup_mounts not implemented\n");
-    
-    /* Fallback: simple chroot (not as secure as pivot_root) */
-    if (chdir(rootfs) < 0) {
-        perror("chdir to rootfs");
-        return -1;
-    }
-    if (chroot(".") < 0) {
-        perror("chroot");
-        return -1;
-    }
-    if (chdir("/") < 0) {
-        perror("chdir to /");
-        return -1;
-    }
-
-    /* TODO: Mount /proc */
-    /* mount("proc", "/proc", "proc", 0, NULL); */
+     * 8. Fallback: If pivot_root fails, fall back to chroot
+     * 
+     * 9. mount("proc", "/proc", "proc", 0, NULL); */
 
     return 0;
 }
@@ -225,7 +187,6 @@ int cmd_run(struct run_opts *opts) {
 
     /* Step 4b-c: [Part 3] Cgroup setup */
     if (opts->mem_limit || opts->cpu_limit) {
-        printf("TODO: Set up cgroups for child %d\n", child);
         /*
         cgroup_create(child);
         if (opts->mem_limit) cgroup_set_memory(child, opts->mem_limit);

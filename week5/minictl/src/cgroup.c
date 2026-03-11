@@ -39,7 +39,7 @@ int cgroup_create(pid_t pid) {
 
 int cgroup_set_memory(pid_t pid, uint64_t limit) {
     /*
-     * TODO: Set memory limit for container
+     * Target: Set memory limit for container
      *
      * Write limit (in bytes) to:
      *   /sys/fs/cgroup/minictl-<pid>/memory.max
@@ -56,7 +56,7 @@ int cgroup_set_memory(pid_t pid, uint64_t limit) {
     snprintf(content, sizeof(content), "%lu", limit);
     
 
-    /* TODO: Implement write_file or inline open/write/close */
+    /* TODO: Uncomment the following code */
     /*
     int fd = open(path, O_WRONLY);
     if (fd < 0) {
@@ -76,7 +76,7 @@ int cgroup_set_memory(pid_t pid, uint64_t limit) {
 
 int cgroup_set_cpu(pid_t pid, int percent) {
     /*
-     * TODO: Set CPU limit for container
+     * Target: Set CPU limit for container
      *
      * Write "quota period" to:
      *   /sys/fs/cgroup/minictl-<pid>/cpu.max
@@ -105,14 +105,14 @@ int cgroup_set_cpu(pid_t pid, int percent) {
     snprintf(content, sizeof(content), "%d %d", quota, period);
     
 
-    /* TODO: Implement write_file or inline open/write/close */
+    /* TODO: add open/write/close here, same pattern as cgroup_set_memory */
 
     return 0;
 }
 
 int cgroup_add_process(pid_t pid) {
     /*
-     * TODO: Add process to the container's cgroup
+     * Target: Add process to the container's cgroup
      *
      * Write PID to:
      *   /sys/fs/cgroup/minictl-<pid>/cgroup.procs
@@ -130,22 +130,12 @@ int cgroup_add_process(pid_t pid) {
     snprintf(content, sizeof(content), "%d", pid);
     
 
-    /* TODO: Implement write_file or inline open/write/close */
+    /* TODO: add open/write/close here, same pattern as cgroup_set_memory */
 
     return 0;
 }
 
 int cgroup_cleanup(pid_t pid) {
-    /*
-     * TODO: Remove the container's cgroup
-     *
-     * Steps:
-     * 1. Make sure cgroup is empty (no processes)
-     *    - Processes should have exited by now
-     * 2. rmdir() the cgroup directory
-     *
-     * Note: You can only rmdir a cgroup when it has no processes.
-     */
 
     char path[PATH_MAX];
     cgroup_path(pid, path, sizeof(path));

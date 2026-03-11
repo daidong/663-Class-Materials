@@ -7,16 +7,14 @@
 
 ## 1. Environment
 
-| Property | Value |
-|----------|-------|
-| OS / Distro | |
-| Kernel version (`uname -r`) | |
-| Cgroups version | v2 / v1 |
-| Number of CPUs | |
-| RAM | |
 
-### Setup Notes
-<Any issues encountered during setup and how you resolved them>
+| Property                    | Value  |
+| --------------------------- | ------ |
+| OS / Distro                 |        |
+| Kernel version (`uname -r`) |        |
+| Number of CPUs              |        |
+| RAM                         |        |
+
 
 ---
 
@@ -24,10 +22,9 @@
 
 ### 2.1 Parts Completed
 
-- [ ] Part 1: chroot mode
-- [ ] Part 2: Namespace isolation (run mode)
-- [ ] Part 3: Cgroup resource limits
-- [ ] Part 4: Image support (optional)
+- Part 1: chroot mode
+- Part 2: Namespace isolation (run mode)
+- Part 3: Cgroup resource limits
 
 ### 2.2 Architecture Overview
 
@@ -38,10 +35,9 @@
 <List 2-3 important design decisions you made and why>
 
 1. **Decision:**
-   **Rationale:**
-
+  **Rationale:**
 2. **Decision:**
-   **Rationale:**
+  **Rationale:**
 
 ---
 
@@ -58,10 +54,6 @@
 ### 3.2 What chroot Does NOT Isolate
 
 <List at least 3 things that are NOT isolated with chroot alone>
-
-1. 
-2. 
-3. 
 
 ---
 
@@ -145,16 +137,21 @@
 
 ### 6.1 Methodology
 
-<Describe how you measured overhead>
+```bash
+# Commands to measure different kinds of overhead:
+
+```
 
 ### 6.2 Startup Time Comparison
 
-| Mode | Iterations | Total Time (s) | Avg per Run (ms) |
-|------|------------|----------------|------------------|
-| Bare fork+exec | | | |
-| chroot mode | | | |
-| Full namespaces | | | |
-| Namespaces + cgroups | | | |
+
+| Mode                 | Iterations | Total Time (s) | Avg per Run (ms) |
+| -------------------- | ---------- | -------------- | ---------------- |
+| Bare fork+exec       |            |                |                  |
+| chroot mode          |            |                |                  |
+| Full namespaces      |            |                |                  |
+| Namespaces + cgroups |            |                |                  |
+
 
 ### 6.3 Analysis
 
@@ -166,13 +163,10 @@
 
 ### 7.1 Issues Encountered
 
-<List significant issues you encountered and how you resolved them>
-
 1. **Issue:**
-   **Solution:**
-
+  **Solution:**
 2. **Issue:**
-   **Solution:**
+  **Solution:**
 
 ### 7.2 Debugging Techniques Used
 
@@ -184,14 +178,9 @@
 
 ### 8.1 What Does minictl Isolate?
 
-<List the isolation guarantees your implementation provides>
-
 ### 8.2 What Does minictl NOT Protect Against?
 
 <List at least 2 attack vectors that your implementation doesn't address>
-
-1. 
-2. 
 
 ### 8.3 Comparison with Docker
 
@@ -202,8 +191,6 @@
 ## 9. Reflection
 
 ### 9.1 What Surprised You?
-
-<Something you learned that was unexpected>
 
 ### 9.2 Connection to Course Themes
 
@@ -219,17 +206,10 @@
 
 Before submitting, verify:
 
-- [ ] `make` builds without warnings
-- [ ] Part 1 tests pass
-- [ ] Part 2 tests pass
-- [ ] Part 3 tests pass
-- [ ] No memory leaks (check with valgrind if possible)
-- [ ] Cgroups are cleaned up after container exits
-- [ ] Code is well-commented
-
----
-
-## Appendix: Key Code Snippets (Optional)
-
-<If you want to highlight a particular implementation detail, paste the relevant code here>
+- Part 1 tests pass
+- Part 2 tests pass
+- Part 3 tests pass
+- Code is well-commented
+- **Optional: No memory leaks (check with valgrind if possible)**
+- **Optional: Cgroups are cleaned up after container exits**
 
