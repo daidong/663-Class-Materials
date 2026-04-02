@@ -1,0 +1,101 @@
+#!/usr/bin/env bpftrace
+/*
+ * syscall_latency.bt - Measure socket syscall latencies
+ * 
+ * Usage: sudo bpftrace syscall_latency.bt
+ * 
+ * This traces send/recv syscalls and reports latency histograms.
+ * Run this while load testing to see where time is spent.
+ */
+
+BEGIN
+{
+    printf("Tracing socket syscall latencies... Hit Ctrl-C to end.\n");
+}
+
+/* sendto - used for UDP and connected TCP */
+tracepoint:syscalls:sys_enter_sendto
+{
+    @send_start[tid] = nsecs;
+}
+
+tracepoint:syscalls:sys_exit_sendto
+/@send_start[tid]/
+{
+    $latency_us = (nsecs - @send_start[tid]) / 1000;
+    @sendto_us = hist($latency_us);
+    @sendto_count = count();
+    delete(@send_start[tid]);
+}
+
+/* recvfrom - used for UDP and connected TCP */
+tracepoint:syscalls:sys_enter_recvfrom
+{
+    @recv_start[tid] = nsecs;
+}
+
+tracepoint:syscalls:sys_exit_recvfrom
+/@recv_start[tid]/
+{
+    $latency_us = (nsecs - @recv_start[tid]) / 1000;
+    @recvfrom_us = hist($latency_us);
+    @recvfrom_count = count();
+    delete(@recv_start[tid]);
+}
+
+/* write - often used for TCP */
+tracepoint:syscalls:sys_enter_write
+{
+    @write_start[tid] = nsecs;
+}
+
+tracepoint:syscalls:sys_exit_write
+/@write_start[tid]/
+{
+    $latency_us = (nsecs - @write_start[tid]) / 1000;
+    @write_us = hist($latency_us);
+    delete(@write_start[tid]);
+}
+
+/* read - often used for TCP */
+tracepoint:syscalls:sys_enter_read
+{
+    @read_start[tid] = nsecs;
+}
+
+tracepoint:syscalls:sys_exit_read
+/@read_start[tid]/
+{
+    $latency_us = (nsecs - @read_start[tid]) / 1000;
+    @read_us = hist($latency_us);
+    delete(@read_start[tid]);
+}
+
+/* epoll - sys_enter_epoll_pwait covers both epoll_wait and epoll_pwait
+ * on x86: epoll_wait exists as a separate syscall
+ * on ARM64: epoll_wait is implemented as epoll_pwait, use that instead */
+tracepoint:syscalls:sys_enter_epoll_pwait,
+tracepoint:syscalls:sys_enter_epoll_wait
+{
+    @epoll_start[tid] = nsecs;
+}
+
+tracepoint:syscalls:sys_exit_epoll_pwait,
+tracepoint:syscalls:sys_exit_epoll_wait
+/@epoll_start[tid]/
+{
+    $latency_us = (nsecs - @epoll_start[tid]) / 1000;
+    @epoll_us = hist($latency_us);
+    delete(@epoll_start[tid]);
+}
+
+END
+{
+    clear(@send_start);
+    clear(@recv_start);
+    clear(@write_start);
+    clear(@read_start);
+    clear(@epoll_start);
+    
+    printf("\n=== Syscall Latency Summary ===\n");
+}

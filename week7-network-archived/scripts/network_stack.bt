@@ -1,0 +1,106 @@
+#!/usr/bin/env bpftrace
+/*
+ * network_stack.bt - Measure time spent in kernel network stack
+ * 
+ * Usage: sudo bpftrace network_stack.bt
+ * 
+ * Traces packet processing through the kernel network stack.
+ */
+
+BEGIN
+{
+    printf("Tracing network stack latencies... Hit Ctrl-C to end.\n");
+}
+
+/* Packet received at NIC */
+tracepoint:net:netif_receive_skb
+{
+    @skb_recv[args->skbaddr] = nsecs;
+}
+
+/* Packet delivered to socket */
+tracepoint:skb:consume_skb
+/@skb_recv[args->skbaddr]/
+{
+    $latency_us = (nsecs - @skb_recv[args->skbaddr]) / 1000;
+    @net_stack_us = hist($latency_us);
+    @packets_processed = count();
+    delete(@skb_recv[args->skbaddr]);
+}
+
+/* Track packet drops */
+tracepoint:skb:kfree_skb
+{
+    @drops = count();
+    @drop_reason[args->reason] = count();
+}
+
+/* Net device transmit */
+tracepoint:net:net_dev_xmit
+{
+    @dev_xmit[args->skbaddr] = nsecs;
+    @tx_by_device[str(args->name)] = count();
+}
+
+/* IP layer processing */
+kprobe:ip_rcv
+{
+    @ip_start[tid] = nsecs;
+}
+
+kretprobe:ip_rcv
+/@ip_start[tid]/
+{
+    $latency_us = (nsecs - @ip_start[tid]) / 1000;
+    @ip_rcv_us = hist($latency_us);
+    delete(@ip_start[tid]);
+}
+
+/* Netfilter (iptables) processing */
+kprobe:nf_hook_slow
+{
+    @nf_start[tid] = nsecs;
+}
+
+kretprobe:nf_hook_slow
+/@nf_start[tid]/
+{
+    $latency_us = (nsecs - @nf_start[tid]) / 1000;
+    @netfilter_us = hist($latency_us);
+    @nf_calls = count();
+    delete(@nf_start[tid]);
+}
+
+/* Softirq for networking */
+tracepoint:irq:softirq_entry
+/args->vec == 3/  /* NET_RX_SOFTIRQ */
+{
+    @softirq_start[cpu] = nsecs;
+}
+
+tracepoint:irq:softirq_exit
+/args->vec == 3 && @softirq_start[cpu]/
+{
+    $latency_us = (nsecs - @softirq_start[cpu]) / 1000;
+    @net_softirq_us = hist($latency_us);
+    delete(@softirq_start[cpu]);
+}
+
+interval:s:5
+{
+    printf("--- 5 second update ---\n");
+    printf("Packets processed: %lld\n", @packets_processed);
+    printf("Drops: %lld\n", @drops);
+    printf("Netfilter calls: %lld\n", @nf_calls);
+}
+
+END
+{
+    clear(@skb_recv);
+    clear(@dev_xmit);
+    clear(@ip_start);
+    clear(@nf_start);
+    clear(@softirq_start);
+    
+    printf("\n=== Network Stack Summary ===\n");
+}
